@@ -8,6 +8,29 @@ output:
 
 ## Loading and preprocessing the data
 
+```{r name="Preprocess"}
+library(plyr)
+
+# read in the data
+actdata <- read.csv("activity.csv",sep=",")
+
+## bascially yoiu will need to pad zeros on the first intervals (instead of 5 it will be 005, 10 will be 010)
+## and then use this as HH:MM formats (I think).  so 100 is really 01:00, 5 is 00:05 ,etc.
+
+## one way is to add a column using sprintf("%04d",actdata$interval)
+hoursmins <- sprintf("%04d",actdata$interval)
+## add a column for the intervals only
+newactdata <- cbind(actdata,hoursmins)
+colnames(newactdata)[4] <- "standardinterval"
+## insert a colon in the HH:MM fomat
+hoursminssep <- paste0(substr(hoursmins,1,2),":",substr(hoursmins,3,4))
+## now add the column
+newactdata <- cbind(newactdata, paste(newactdata$date,hoursminssep))
+colnames(newactdata)[5] <- "clocktime"
+newactdata <- cbind(newactdata,strptime(newactdata$clocktime,"%Y-%m-%d %H:%M"))
+colnames(newactdata)[6] <- "formattedclocktime"
+
+```
 
 
 ## What is mean total number of steps taken per day?
