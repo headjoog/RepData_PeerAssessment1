@@ -1,0 +1,222 @@
+---
+title: "Reproducible Research Peer Assessment 1"
+date: "December 11, 2014"
+output: html_document
+---
+
+This document provides an overview of Peer Assessment 1, an overview of the questions, and the detail and code listing behind the answers.
+
+### Assignment Background
+A vast amount of data about personal movement is now available thanks to activity monitoring devices such as those from Fitbit, Jawbone, and Nike.  This assignment makes use of data from a personal activity monitoring device, which collects data at 5 minute intervals throughout the day.  The data consists of two months of data collectec from an anonymous individual collected during the months of October and November, 2012 and includes the number of steps taken in 5 minute intervals each day.
+
+##### Data Summary
+Variables included in the initial data set include:&nbsp;
+
+1. steps:  The number of steps taken in a 5-minute interval (missing values are coded as NA).
+2. date:  The date on which the measurement was taken in YYYY-MM-DD format.
+3. interval:  Identifier for the 5-minute interval in which the measurement was taken.&nbsp;
+
+The dataset is stored in a comma-separated-value (CSV) file and there are 17,568 observations in this dataset. 
+
+Each section below describes the approach to arrive at the answer for each assigned question (questions are shown in detail below.)
+
+##### Environment Setup
+This section simply sets the working directory and loads required packages.  The only required package for the script is the "plyr" package.
+
+
+```r
+setwd("~/Documents/coursera/ReproducibleResearch/PA1/RepData_PeerAssessment1")
+library(plyr)
+```
+#### Loading and Preprocessing The Data
+
+**1.  Load the Data**
+
+The activity data is loaded into a data frame called "actdata".
+
+
+```r
+# read in the data
+actdata <- read.csv("activity.csv",sep=",")
+```
+
+**2.  Process and Transform the Data**
+
+Because the interval variable is representative of the hour and minute at which the measurement was taken ("5" representing 5 minutes after midnight, "105" representing 5 minutes after the first hour, etc.), it was necessary to transform this data into a proper date time format for use in analysis. There are many ways to do this and one method was to simply format the interval character string into a proper HH:MM format and then append to the date for a full datetime object.
+
+The transformed data is stored in a new data frame "newactdata" to preserve the original data.  The transformed data frame "newactdata" consists of the following columns:
+
+1. steps - The total number of steps recorded for the interval (original)
+2. data - The recorded date of the steps in HHHH-MM-DD (original)
+3. interval - The 5-minute interval of the recording (original)
+4. standardinterval - The 5-minute interval formatted as a four digit character, including leading zeros. (new)
+5. clocktime - A column with "interval" and "standardinterval" concatenated as a string object. (new)
+6. formattedclocktime - A column consisting of a formatted date object in date time format ("YYYY-MM-DD HH:MM:SS")
+
+
+```r
+## one way is to add a column using sprintf("%04d",actdata$interval)
+hoursmins <- sprintf("%04d",actdata$interval)
+## add a column for the intervals only
+newactdata <- cbind(actdata,hoursmins)
+colnames(newactdata)[4] <- "standardinterval"
+## insert a colon in the HH:MM fomat
+hoursminssep <- paste0(substr(hoursmins,1,2),":",substr(hoursmins,3,4))
+## now add the column and give them proper names
+newactdata <- cbind(newactdata, paste(newactdata$date,hoursminssep))
+colnames(newactdata)[5] <- "clocktime"
+newactdata <- cbind(newactdata,strptime(newactdata$clocktime,"%Y-%m-%d %H:%M"))
+colnames(newactdata)[6] <- "formattedclocktime"
+
+# end of transforms 
+```
+
+#### What is the mean total number of steps taken per day?
+
+For this part of the assignment, missing values in the data set were ignored.
+
+**1.  Make a histogram of the total number of steps taken each day**
+
+
+```r
+# sum the total number of steps by day
+totalsteps <- aggregate(steps ~ date, data=newactdata, sum)
+```
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png) 
+
+**2.  Calculate and report the mean and median total number of steps taken per day**
+
+
+```r
+meansteps <- mean(totalsteps$steps)
+mediansteps <- median(totalsteps$steps)
+```
+The mean total number of steps taken per day is 1.0766189 &times; 10<sup>4</sup>.<br/>
+The median total number of steps taken per day is 10765.
+<br/>
+<br/>
+
+#### What is the average daily activity pattern?
+
+**1.  Make a time series plot (i.e. type="l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)**
+
+```r
+# set up data for the plot, aggregate steps across the standardinterval
+timeplot <- aggregate(steps ~ standardinterval, data=newactdata, mean)
+
+x <- timeplot$standardinterval
+y <- timeplot$steps
+```
+
+
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8-1.png) 
+
+**2.  Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?**
+
+```r
+maxsteps <- timeplot[which.max(timeplot$steps),]
+```
+The interval containing the maximum number of steps is 0835.<br/>
+The maximum number of steps in that interval is 206.1698113.
+<br/>
+<br/>
+
+#### Imputing Missing Values
+Note that there are a number of days/intervals where there are missing values (coded as NA).  The presence of missing days may introduct bias.
+
+**1.  Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)**
+
+
+```r
+# find the total number of missing values
+misscount <- nrow(newactdata[!complete.cases(newactdata),])
+# misscount
+```
+There are 2304 missing values in the data set.
+
+**2.  Devise a strategy for filling in all of the missing values in the dataset.**  
+
+For this effort we will use the interval mean value to replace NAs.  The code below outlines the approach.
+
+
+```r
+# add a new column to hold the new values of the steps and preserve the old values
+
+newactdata <- cbind(newactdata, paste(NA))
+colnames(newactdata)[7] <- "newstepvalues"
+
+# use a join to get the interval mean
+# don't think you can use merge since it re-orders
+# newactdata <- merge(newactdata,timeplot,by="standardinterval",all=TRUE)
+actdataNA <- join(newactdata,timeplot,by="standardinterval")
+colnames(actdataNA)[8] <- "intervalmean"
+
+# replace the values - 
+# use ifelse to determine if it's NA, if so, use the interval mean.  If not, use the original value
+#  Note:  the new values are called "newstepvalues"
+actdataNA$newstepvalues <- ifelse(is.na(actdataNA$steps),actdataNA$intervalmean,actdataNA$steps)
+```
+
+**3. Create a new dataset that is equal to the original dataset but with the missing values data filled in**
+
+
+```r
+# "actdataNoMissing" is of the same form as the original, with missing values filled in.
+steps <-actdataNA$newstepvalues
+date <- actdataNA$date
+interval <- actdataNA$interval
+
+actdataNoMissing <- data.frame(steps,date,interval)
+```
+
+**4. Make a histogram of the total number of steps taken each day.  Calculate and report hte mean and median total number of steps taken per day.  Do these differ from the estimates from the first part of the assignment?  What is the impact of imputing the missing data on the estimates of the total daily number of steps?**
+
+Histogram of Imputed Values
+
+```r
+totalnewsteps <- aggregate(steps ~ date, data=actdataNoMissing, sum)
+# 1. plot the histogram
+hist(totalnewsteps$steps)
+```
+
+![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13-1.png) 
+Mean and Median Total Number of Steps Taken Per Day
+
+
+
+```r
+meannewsteps <- mean(totalnewsteps$steps)
+mediannewsteps <- median(totalnewsteps$steps)
+```
+The mean total number of steps (for imputed values) is 1.0766189 &times; 10<sup>4</sup>.<br/>
+The median total number of steps (for imputed values) is 1.0766189 &times; 10<sup>4</sup>.
+<br/>
+<br/>
+
+#### Are there differences in activity patterns between weekdays and weekends?
+
+**1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given data is a weekday or weekend day.**
+
+
+```r
+# add a column indicating weekend or weekday
+actdataNoMissing <- cbind(actdataNA,daycategory=ifelse((weekdays(as.POSIXlt(actdataNoMissing$date))=="Saturday" | weekdays(as.POSIXlt(actdataNoMissing$date))=="Sunday"),"weekend","weekday"))
+```
+
+**2. Make a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).**
+
+
+```r
+# set up 4 figures in 2 rows and 2 columns
+
+
+timeplotWeekendData <- actdataNoMissing[actdataNoMissing$daycategory=="weekend",]
+timeplotWeekend <- aggregate(newstepvalues ~ standardinterval, data=timeplotWeekendData, mean)
+
+
+timeplotWeekdayData <- actdataNoMissing[actdataNoMissing$daycategory=="weekday",]
+timeplotWeekday <- aggregate(newstepvalues ~ standardinterval,data=timeplotWeekdayData,mean )
+```
+
+![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-17-1.png) 
+
