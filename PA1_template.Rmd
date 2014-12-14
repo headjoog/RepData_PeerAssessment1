@@ -9,7 +9,7 @@ This document provides an overview of Peer Assessment 1, an overview of the ques
 ### Assignment Background
 A vast amount of data about personal movement is now available thanks to activity monitoring devices such as those from Fitbit, Jawbone, and Nike.  This assignment makes use of data from a personal activity monitoring device, which collects data at 5 minute intervals throughout the day.  The data consists of two months of data collectec from an anonymous individual collected during the months of October and November, 2012 and includes the number of steps taken in 5 minute intervals each day.
 
-#### Data Summary
+##### Data Summary
 Variables included in the initial data set include:&nbsp;
 
 1. steps:  The number of steps taken in a 5-minute interval (missing values are coded as NA).
@@ -20,12 +20,12 @@ The dataset is stored in a comma-separated-value (CSV) file and there are 17,568
 
 Each section below describes the approach to arrive at the answer for each assigned question (questions are shown in detail below.)
 
-#### Environment Setup
+##### Environment Setup
 This section simply sets the working directory and loads required packages.  The only required package for the script is the "plyr" package.
 
 ```{r}
 
-setwd("~/Documents/coursera/ReproducibleResearch/Assignment1")
+setwd("~/Documents/coursera/ReproducibleResearch/PA1/RepData_PeerAssessment1")
 library(plyr)
 
 ```
@@ -85,7 +85,7 @@ totalsteps <- aggregate(steps ~ date, data=newactdata, sum)
 hist(totalsteps$steps)
 ```
 
-2.  Calculate and report the mean and median total number of steps taken per day
+**2.  Calculate and report the mean and median total number of steps taken per day**
 
 ```{r}
 meansteps <- mean(totalsteps$steps)
@@ -118,8 +118,10 @@ lines(x,y)
 maxsteps <- timeplot[which.max(timeplot$steps),]
 
 ```
-The interval containing the maximum number of steps is `r maxsteps$standardinterval`.
+The interval containing the maximum number of steps is `r maxsteps$standardinterval`.<br/>
 The maximum number of steps in that interval is `r maxsteps$steps`.
+<br/>
+<br/>
 
 #### Imputing Missing Values
 Note that there are a number of days/intervals where there are missing values (coded as NA).  The presence of missing days may introduct bias.
@@ -168,7 +170,7 @@ actdataNoMissing <- data.frame(steps,date,interval)
 
 ```
 
-**4. Make a histograme of the total number of steps taken each day.  Calculate and report hte mean and median total number of steps taken per day.  Do these differ from the estimates from the first part of the assignment?  What is the impact of imputing the missing data on the estimates of the total daily number of steps?**
+**4. Make a histogram of the total number of steps taken each day.  Calculate and report hte mean and median total number of steps taken per day.  Do these differ from the estimates from the first part of the assignment?  What is the impact of imputing the missing data on the estimates of the total daily number of steps?**
 
 Histogram of Imputed Values
 ```{r}
